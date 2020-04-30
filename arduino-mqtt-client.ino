@@ -24,6 +24,7 @@ NewPing sonar2(TRIGGER_PIN_S2, TRIGGER_PIN_S2, MAX_DISTANCE);
 
 //IP por partes
 unsigned char octet[4] = {0,0,0,0};
+unsigned int prue[4] = {0,0,0,0};
 
 //Some functions
 void sendMessage(char* topic, char* message);
@@ -138,23 +139,30 @@ void sendSensor(char letra, NewPing sensor){
 
 //Send IP to raspberry
 void sendIP(char letra, unsigned char ip[4]){
-  char mens[9];
-  memset(&mens[0],0,8);
+  char mens[20];
+  memset(&mens[0],0,20);
 
-  //Manualmente
+  //Calculo las longitudes de los números
+  int long_ip[4] = {0,0,0,0};
+  for(int i=0; i<4;i++){
+    if (ip[i] > 100)
+      long_ip[i] = 3;
+    else if (ip[i] > 10)
+      long_ip[i] = 2;
+    else
+      long_ip[i] = 1;
+  }
+
+  //Añado manualmente la IP
   mens[0] = letra;
-  mens[1] = ip[3];
-  mens[2] = 46;
-  mens[3] = ip[2];
-  mens[4] = 46;
-  mens[5] = ip[1];
-  mens[6] = 46;
-  mens[7] = ip[0];
+  sprintf(&mens[0+1], "%d", ip[3]);
+  mens[0+1+long_ip[3]] = '.';
+  sprintf(&mens[0+1+long_ip[3]+1], "%d", ip[2]);
+  mens[0+1+long_ip[3]+1+long_ip[2]] = '.';
+  sprintf(&mens[0+1+long_ip[3]+1+long_ip[2]+1], "%d", ip[1]);
+  mens[0+1+long_ip[3]+1+long_ip[2]+1+long_ip[1]] = '.';
+  sprintf(&mens[0+1+long_ip[3]+1+long_ip[2]+1+long_ip[1]+1], "%d", ip[0]);
 
-  //Bucle
-//  for(int i = 0; i<4;i++){
-//    mens[i + 1] = ip[3-i];
-//  }
   sendMessage("prueba",&mens[0]);
 }
 
@@ -210,7 +218,9 @@ bool displayConnectionDetails2(void){
     //Transfomo la IP de binario a partes
     for (int i=0; i<4;i++){
       octet[i] = (ipAddress >> (i*8) ) & 0xFF;
+      prue[i] = (ipAddress >> (i*8) ) & 0xFF;
     }
+
     
     Serial.println("IP Addr: "); cc3000.printIPdotsRev(ipAddress);
     Serial.println("Netmask: "); cc3000.printIPdotsRev(netmask);
