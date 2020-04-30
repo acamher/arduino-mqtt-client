@@ -12,6 +12,8 @@
 #include <string.h>
 #include <NewPing.h>
 
+
+//Config sensor
 #define TRIGGER_PIN_S1  2// Arduino pin tied to trigger pin on the ultrasonic sensor.
 #define TRIGGER_PIN_S2  8
 #define MAX_DISTANCE 250 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
@@ -19,8 +21,11 @@
 NewPing sonar1(TRIGGER_PIN_S1, TRIGGER_PIN_S1, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
 NewPing sonar2(TRIGGER_PIN_S2, TRIGGER_PIN_S2, MAX_DISTANCE);
 
-#define SENSOR1 22
 
+//IP por partes
+unsigned char octet[4] = {0,0,0,0};
+
+//Some functions
 void sendMessage(char* topic, char* message);
 
 void callback (char* topic, byte* payload, unsigned int length) {
@@ -28,6 +33,8 @@ void callback (char* topic, byte* payload, unsigned int length) {
 
 cc3000_PubSubClient mqttclient(server.ip, MQTT_PORT, callback, client, cc3000);
 
+
+//Start
 void setup(void)
 {
     Serial.begin(115200);
@@ -83,11 +90,11 @@ void setup(void)
     Serial.println("Cliente no conectado");
   }
 
+  sendIP('I', octet);
+
 }
 
-/**
- * The main loop
- */
+//The main loop
 void loop(void) {
   char message[10];
 
@@ -106,22 +113,49 @@ void loop(void) {
     }
   } else {
     // Send sensor data
-    int someInt = sonar1.ping_cm();
-    Serial.print("Dist: ");
+    sendSensor('A', sonar1);
+    sendSensor('B', sonar2);
+  }
+  delay(DELAY);
+}
+
+
+//Send data sensor using a letter and the sonar
+void sendSensor(char letra, NewPing sensor){
+  int someInt = sensor.ping_cm();
+    Serial.print("Dist ");
+    Serial.print(letra);
+    Serial.print(": ");
     Serial.println(someInt);
     char m[80];
     memset(&m[0],0,80);     //m[2]= 0;
-    m[0]= 'A';
+    m[0]= letra;
     sprintf(&m[1], "%d", someInt);
-    //memset(&m[0],0,80);     //m[2]= 0;
-    //char *mens;
-    //char array_mens[m.length()+1];
-    //memset(&array_mens[m.length()],0,1);
-    //m.toCharArray(array_mens,m.length());
-
     sendMessage("prueba",&m[0]); //Envía la palabra que hay en la dirección de memoria de m[0] hasta que encuentre un 0 en alguna dirección de memoria (en m[80] concretamente)
-  }
-  delay(DELAY);
+    
+}
+
+
+//Send IP to raspberry
+void sendIP(char letra, unsigned char ip[4]){
+  char mens[9];
+  memset(&mens[0],0,8);
+
+  //Manualmente
+  mens[0] = letra;
+  mens[1] = ip[3];
+  mens[2] = 46;
+  mens[3] = ip[2];
+  mens[4] = 46;
+  mens[5] = ip[1];
+  mens[6] = 46;
+  mens[7] = ip[0];
+
+  //Bucle
+//  for(int i = 0; i<4;i++){
+//    mens[i + 1] = ip[3-i];
+//  }
+  sendMessage("prueba",&mens[0]);
 }
 
 
@@ -173,6 +207,11 @@ bool displayConnectionDetails2(void){
   }
   else
   {
+    //Transfomo la IP de binario a partes
+    for (int i=0; i<4;i++){
+      octet[i] = (ipAddress >> (i*8) ) & 0xFF;
+    }
+    
     Serial.println("IP Addr: "); cc3000.printIPdotsRev(ipAddress);
     Serial.println("Netmask: "); cc3000.printIPdotsRev(netmask);
     Serial.println("Gateway: "); cc3000.printIPdotsRev(gateway);
